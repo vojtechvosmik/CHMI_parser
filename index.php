@@ -1,44 +1,63 @@
 <?php
 
-    $baseUrl = "http://portal.chmi.cz/files/portal/docs/meteo/rad/data_tr_png_1km/";
+	function getRadarImages() {
+		$files = scandir("radar_images");
+		return $files;
+	}
 
-    function getDOM() {
-        global $baseUrl;
-        $str = file_get_contents($baseUrl);
-        $DOM = new DOMDocument;
-        libxml_use_internal_errors(true);
-        $DOM->loadHTML($str);
-        return $DOM;
-    }
+	function getDateTime($fileName) {
+		$splitedFileName = explode(".", $fileName);
+		if (count($splitedFileName) != 6) {
+			return null;
+		}
 
-    function cropImage($url) {
-        global $baseUrl;
-        $fullUrl = $baseUrl . $url;
-        $im = imagecreatefrompng($fullUrl);
-        $im2 = imagecrop($im, ['x' => 75, 'y' => 156, 'width' => 567, 'height' => 370]);
-        if ($im2 !== FALSE) {
-            imagepng($im2, 'radar_images/' . $url);
-            imagedestroy($im2);
-        }
-        imagedestroy($im);
-        echo '<img src = "' . 'radar_images/' . $url . '">';
-        echo "<br><br><br>";
-    }
+		$date = $splitedFileName[2];
+		$time = $splitedFileName[3];
 
-    function parse($DOM) {
-        $finder = new DomXPath($DOM);
-        $DOMNodeList = $finder->query("//a");
-        for($i = $DOMNodeList->length; $i >= $DOMNodeList->length - 20; $i--){
-            $DOMNode = $DOMNodeList->item($i);
-            if ($DOMNode != null) {
-                $url = $DOMNode->getAttribute("href");
-                echo $url;
-                if ($url != "../") {
-                    cropImage($url);
-                }
-            }
-        }
-    }
+		if (strlen($date) == 8) {
+			$year = substr($date, 0, 4);
+			$month = substr(substr($date, 4, 6), 0, 2);
+			$day = substr($date, 6, 8);
+			$parsedDate = $year . "-" . $month . "-" . $day;
+		}else {
+			$parsedDate = $date;
+		}
 
-    $DOM = getDOM();
-    parse($DOM);
+		if (strlen($time) == 4) {
+			$hours = substr($time, 0, 2) + 1; //CHMI has wrong time format..
+			$minutes = substr($time, 2, 4);
+			$parsedTime = $hours . ":" . $minutes;
+		}else {
+			$parsedTime = $time;
+		}
+
+		$dateTime = $parsedDate . " " . $parsedTime;
+		return $dateTime;
+	}
+
+	function getUrl() {
+    	if (isset($_SERVER['HTTPS'])){
+        	$protocol = ($_SERVER['HTTPS'] && $_SERVER['HTTPS'] != "off") ? "https" : "http";
+    	}else {
+        	$protocol = 'http';
+    	}
+    	return $protocol . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+	}
+
+	$radarImages = getRadarImages();
+	$items = array();
+
+	foreach ($radarImages as $key => $fileName) {
+		$url = getUrl() . "radar_images/" . $fileName;
+		$dateTime = getDateTime($fileName);
+		if ($key >= 2 && $dateTime != null && $fileName != null) {
+			$item = array(
+			'url' => $url,
+			'date' => $dateTime);
+			$items[] = $item;
+		}
+	}
+
+	echo json_encode($items, JSON_UNESCAPED_SLASHES);
+
+?>
