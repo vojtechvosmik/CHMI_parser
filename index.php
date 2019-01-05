@@ -5,7 +5,7 @@
 		return $files;
 	}
 
-	function getDateTime($fileName) {
+	function getDateTime($fileName) { //Parsing date and time from radar image file name
 		$splitedFileName = explode(".", $fileName);
 		if (count($splitedFileName) != 6) {
 			return null;
@@ -35,7 +35,7 @@
 		return $dateTime;
 	}
 
-	function getUrl() {
+	function getUrl() { 
     	if (isset($_SERVER['HTTPS'])){
         	$protocol = ($_SERVER['HTTPS'] && $_SERVER['HTTPS'] != "off") ? "https" : "http";
     	}else {
